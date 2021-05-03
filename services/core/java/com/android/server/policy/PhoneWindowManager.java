@@ -562,7 +562,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     int mDoublePressOnPowerBehavior;
     ComponentName mPowerDoublePressTargetActivity;
     int mTriplePressOnPowerBehavior;
-    int mLongPressOnBackBehavior;
     int mShortPressOnSleepBehavior;
     int mShortPressOnWindowBehavior;
     int mPowerVolUpBehavior;
@@ -628,6 +627,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private int mForceNavbar = -1;
 
     // Tracks user-customisable behavior for certain key events
+    private Action mBackLongPressAction;
     private Action mHomeLongPressAction;
     private Action mHomeDoubleTapAction;
     private Action mMenuPressAction;
@@ -932,6 +932,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.CLICK_PARTIAL_SCREENSHOT), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.KEY_BACK_LONG_PRESS_ACTION), false, this,
                     UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.KEY_HOME_LONG_PRESS_ACTION), false, this,
@@ -1500,13 +1503,14 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private void backLongPress() {
         mBackKeyHandled = true;
 
-        switch (mLongPressOnBackBehavior) {
-            case LONG_PRESS_BACK_NOTHING:
-                break;
-            case LONG_PRESS_BACK_GO_TO_VOICE_ASSIST:
-                launchVoiceAssist(false /* allowDuringSetup */);
-                break;
-        }
+        long now = SystemClock.uptimeMillis();
+        KeyEvent event = new KeyEvent(now, now, KeyEvent.ACTION_DOWN,
+                KEYCODE_BACK, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+                KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_KEYBOARD);
+
+        performHapticFeedback(HapticFeedbackConstants.LONG_PRESS, false,
+                "Back - Long Press");
+        performKeyAction(mBackLongPressAction, event);
     }
 
     private void accessibilityShortcutActivated() {
@@ -1742,7 +1746,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     }
 
     private boolean hasLongPressOnBackBehavior() {
-        return mLongPressOnBackBehavior != LONG_PRESS_BACK_NOTHING;
+        return mBackLongPressAction != Action.NOTHING;
     }
 
     private boolean hasLongPressOnStemPrimaryBehavior() {
@@ -2397,9 +2401,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         mSupportLongPressPowerWhenNonInteractive = mContext.getResources().getBoolean(
                 com.android.internal.R.bool.config_supportLongPressPowerWhenNonInteractive);
 
-        mLongPressOnBackBehavior = mContext.getResources().getInteger(
-                com.android.internal.R.integer.config_longPressOnBackBehavior);
-
         mShortPressOnPowerBehavior = mContext.getResources().getInteger(
                 com.android.internal.R.integer.config_shortPressOnPowerBehavior);
         mLongPressOnPowerBehavior = mContext.getResources().getInteger(
@@ -2838,9 +2839,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private void initSingleKeyGestureRules() {
         mSingleKeyGestureDetector = SingleKeyGestureDetector.get(mContext);
         mSingleKeyGestureDetector.addRule(new PowerKeyRule());
-        if (hasLongPressOnBackBehavior()) {
-            mSingleKeyGestureDetector.addRule(new BackKeyRule());
-        }
+        mSingleKeyGestureDetector.addRule(new BackKeyRule());
         if (hasStemPrimaryBehavior()) {
             mSingleKeyGestureDetector.addRule(new StemPrimaryKeyRule());
         }
@@ -2887,6 +2886,16 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         mAppSwitchPressAction = Action.APP_SWITCH;
         mAppSwitchLongPressAction = Action.fromIntSafe(res.getInteger(
                 com.android.internal.R.integer.config_longPressOnAppSwitchBehavior));
+
+        mBackLongPressAction = Action.fromIntSafe(res.getInteger(
+                com.android.internal.R.integer.config_longPressOnBackBehavior));
+        if (mBackLongPressAction.ordinal() > Action.SLEEP.ordinal()) {
+            mBackLongPressAction = Action.NOTHING;
+        }
+
+        mBackLongPressAction = Action.fromSettings(resolver,
+                Settings.System.KEY_BACK_LONG_PRESS_ACTION,
+                mBackLongPressAction);
 
         mHomeLongPressAction = Action.fromIntSafe(res.getInteger(
                 com.android.internal.R.integer.config_longPressOnHomeBehavior));
@@ -6887,9 +6896,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 pw.print(mLidKeyboardAccessibility);
                 pw.print(" mLidNavigationAccessibility="); pw.print(mLidNavigationAccessibility);
                 pw.print(" getLidBehavior="); pw.println(lidBehaviorToString(getLidBehavior()));
-        pw.print(prefix);
-                pw.print("mLongPressOnBackBehavior=");
-                pw.println(longPressOnBackBehaviorToString(mLongPressOnBackBehavior));
         pw.print(prefix);
                 pw.print("mShortPressOnPowerBehavior=");
                 pw.println(shortPressOnPowerBehaviorToString(mShortPressOnPowerBehavior));

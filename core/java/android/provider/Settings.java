@@ -6282,6 +6282,11 @@ public final class Settings {
         public static final String VOLUME_ANSWER_CALL = "volume_answer_call";
 
         /**
+         * @hide
+         */
+        public static final String QS_TRANSPARENCY = "qs_transparency";
+
+        /**
          * whether to enable or disable vibration on succesful fingerprint auth
          *
          * @hide

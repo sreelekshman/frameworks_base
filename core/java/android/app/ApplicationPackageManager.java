@@ -811,6 +811,8 @@ public class ApplicationPackageManager extends PackageManager {
             };
 
     private static final String[] pTensorCodenames = {
+            "husky",
+            "shiba",
             "felix",
             "tangorpro",
             "lynx",
@@ -875,10 +877,6 @@ public class ApplicationPackageManager extends PackageManager {
             "com.google.android.feature.PIXEL_EXPERIENCE",
             "com.google.android.feature.GOOGLE_BUILD",
             "com.google.android.feature.GOOGLE_EXPERIENCE"
-    };
-
-    private static final String[] featuresAndroid = {
-            "android.software.freeform_window_management"
     };
 
     @Override
